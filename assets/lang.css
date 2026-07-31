@@ -1,0 +1,54 @@
+/* ── Language switcher (Google Translate powered) ───────────────────── */
+
+/* Hide Google's own widget chrome; we drive it with our own buttons. */
+#google_translate_element { display: none !important; }
+.goog-te-banner-frame, .skiptranslate iframe { display: none !important; }
+body { top: 0 !important; }          /* Google pushes <body> down; undo it. */
+.goog-tooltip, .goog-tooltip:hover { display: none !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }
+
+/* Google's floating "original text" balloon that follows the cursor. */
+#goog-gt-tt, .goog-te-balloon-frame, div#goog-gt-,
+.goog-te-ftab, .goog-te-ftab-float { display: none !important; }
+.activity-root, .status-message, .started-activity-container { display: none !important; }
+font[style*="vertical-align"] { vertical-align: inherit !important; }
+
+/* Our EN | AR pill */
+.ms-lang {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--ms-hairline, #e2e8f0);
+  border-radius: 9999px;
+  overflow: hidden;
+  background: #fff;
+  flex-shrink: 0;
+}
+.ms-lang button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 7px 11px;
+  color: #0f2a4a;
+  transition: background-color .18s, color .18s;
+}
+.ms-lang button:hover { background: #f1f5f9; }
+.ms-lang button[aria-pressed="true"] { background: #0f2a4a; color: #fff; }
+.ms-lang button:focus-visible { outline: 2px solid #c8a028; outline-offset: -2px; }
+.ms-lang .ms-lang-sep { width: 1px; align-self: stretch; background: #e2e8f0; }
+
+/* Mobile panel variant: full width row */
+.ms-lang-mobile { display: flex; justify-content: flex-start; margin-top: 4px; }
+
+/* ── RTL handling when Arabic is active ─────────────────────────────── */
+html[dir="rtl"] body { direction: rtl; text-align: right; }
+
+/* Flip the main flex rows so nav/logo mirror correctly */
+html[dir="rtl"] .ms-lang { direction: ltr; }   /* keep EN|AR order stable */
+
+/* Tailwind's ml-* / mr-* are physical; nudge the few that matter. */
+html[dir="rtl"] .ms-flip-margin { margin-left: 0; margin-right: .625rem; }
