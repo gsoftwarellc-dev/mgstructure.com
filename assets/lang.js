@@ -26,7 +26,21 @@
         : 'googtrans=;path=/' + dom + ';expires=Thu, 01 Jan 1970 00:00:00 GMT';
     });
   }
+  /* ?lang=ar wins over everything else. Cookies and localStorage are
+     partitioned (or blocked outright) inside a cross-origin iframe, so an
+     embedded copy can only be told its language through the URL. */
+  function urlLang() {
+    try {
+      var q = new URLSearchParams(location.search).get('lang');
+      if (q && LANGS.indexOf(q) > -1) return q;
+    } catch (e) {}
+    return null;
+  }
+
   function currentLang() {
+    var u = urlLang();
+    if (u) return u;
+
     var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]+)/);
     if (m) {
       var parts = decodeURIComponent(m[1]).split('/');
@@ -38,6 +52,11 @@
       if (LANGS.indexOf(s) > -1) return s;
     } catch (e) {}
     return DEFAULT;
+  }
+
+  /* True when we cannot rely on our own cookies surviving a reload. */
+  function embedded() {
+    try { return window.top !== window.self; } catch (e) { return true; }
   }
 
   /* ---- direction ------------------------------------------------------ */
@@ -88,8 +107,13 @@
     if (LANGS.indexOf(lang) < 0 || lang === currentLang()) return;
     try { localStorage.setItem('ms-lang', lang); } catch (e) {}
     setGoogTrans(lang);
-    // Reload so Google re-renders the whole document in the new language.
-    location.reload();
+
+    // Carry the choice in the URL so it survives the reload even when the
+    // cookie is partitioned away (iframe) — and so links stay shareable.
+    var url = new URL(location.href);
+    if (lang === DEFAULT) url.searchParams.delete('lang');
+    else url.searchParams.set('lang', lang);
+    location.replace(url.toString());
   }
 
   /* ---- Google Translate bootstrap ------------------------------------- */
@@ -120,6 +144,13 @@
     var lang = currentLang();
     applyDir(lang);
 
+    // Google's widget picks its target language from the googtrans cookie,
+    // not from our state — so when ?lang= is present, sync the cookie to it
+    // before the widget boots. This also clears a stale Arabic cookie when
+    // ?lang=en (or no param plus an explicit English choice) is requested,
+    // which otherwise leaves plain URLs stuck in Arabic.
+    if (urlLang()) setGoogTrans(lang);
+
     // Desktop: into the header actions cluster (next to the phone pill).
     var deskAnchor = document.querySelector('header .hidden.items-center.gap-3.lg\\:flex');
     if (deskAnchor && !deskAnchor.querySelector('.ms-lang')) {
@@ -132,8 +163,25 @@
     }
     markActive(lang);
 
+    // Inside an iframe the cookie may not survive navigation, so stamp
+    // ?lang= onto same-site links to carry the choice from page to page.
+    if (lang !== DEFAULT && embedded()) keepLangOnLinks(lang);
+
     // Only pull in Google's script when Arabic is actually in use.
     if (lang !== DEFAULT) loadGoogle();
+  }
+
+  function keepLangOnLinks(lang) {
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var href = a.getAttribute('href');
+      if (!href || href.charAt(0) === '#') return;
+      if (/^(mailto:|tel:|javascript:)/i.test(href)) return;
+      var u;
+      try { u = new URL(href, location.href); } catch (e) { return; }
+      if (u.origin !== location.origin) return;      // leave outbound links alone
+      u.searchParams.set('lang', lang);
+      a.setAttribute('href', u.pathname + u.search + u.hash);
+    });
   }
 
   if (document.readyState === 'loading') {
